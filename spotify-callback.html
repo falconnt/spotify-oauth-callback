@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify OAuth Callback</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #1DB954;
+            margin-top: 0;
+        }
+        .status {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            word-break: break-all;
+        }
+        .code-block {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        button {
+            background: #1DB954;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        button:hover {
+            background: #1ed760;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Spotify OAuth Callback</h1>
+        <div id="status" class="status info">Bezig met verwerken...</div>
+        <div id="details"></div>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+        const error = params.get('error');
+        const state = params.get('state');
+        
+        const statusEl = document.getElementById('status');
+        const detailsEl = document.getElementById('details');
+
+        if (error) {
+            statusEl.className = 'status error';
+            statusEl.textContent = `Fout: ${error}`;
+            if (params.get('error_description')) {
+                detailsEl.innerHTML = `<p>${params.get('error_description')}</p>`;
+            }
+        } else if (code) {
+            // Probeer eerst automatisch door te sturen naar localhost
+            const localCallbackUrl = `http://localhost:8888/spotify-callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state || '')}`;
+            
+            fetch(localCallbackUrl, { mode: 'no-cors' })
+                .then(() => {
+                    statusEl.className = 'status success';
+                    statusEl.textContent = 'Succesvol! Authorization code doorgestuurd naar OpenClaw.';
+                    detailsEl.innerHTML = '<p>Je kunt dit venster sluiten.</p>';
+                })
+                .catch(() => {
+                    // Localhost niet bereikbaar, toon code voor handmatige invoer
+                    statusEl.className = 'status info';
+                    statusEl.textContent = 'Authorization code ontvangen';
+                    detailsEl.innerHTML = `
+                        <p>OpenClaw lokaal niet bereikbaar. Kopieer deze code handmatig:</p>
+                        <div class="code-block"><code>${code}</code></div>
+                        <button onclick="copyCode()">Kopieer code</button>
+                        <p style="margin-top: 20px; font-size: 14px; color: #666;">
+                            Plak deze code in OpenClaw om de authenticatie te voltooien.
+                        </p>
+                    `;
+                });
+        } else {
+            statusEl.className = 'status error';
+            statusEl.textContent = 'Geen authorization code ontvangen';
+            detailsEl.innerHTML = '<p>Er is iets misgegaan met de OAuth flow.</p>';
+        }
+
+        function copyCode() {
+            const code = params.get('code');
+            navigator.clipboard.writeText(code).then(() => {
+                const btn = event.target;
+                btn.textContent = 'Gekopieerd!';
+                setTimeout(() => {
+                    btn.textContent = 'Kopieer code';
+                }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>
